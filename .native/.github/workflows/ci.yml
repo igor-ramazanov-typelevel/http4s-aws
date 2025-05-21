@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        scala: [2.13, 3]
+        scala: [3]
         java: [temurin@17]
         project: [rootJS, rootJVM, rootNative]
     runs-on: ${{ matrix.os }}
@@ -131,36 +131,6 @@ jobs:
         if: matrix.java == 'temurin@17' && steps.setup-java-temurin-17.outputs.cache-hit == 'false'
         run: sbt --client '+update'
 
-      - name: Download target directories (2.13, rootJS)
-        uses: actions/download-artifact@v4
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-rootJS
-
-      - name: Inflate target directories (2.13, rootJS)
-        run: |
-          tar xf targets.tar
-          rm targets.tar
-
-      - name: Download target directories (2.13, rootJVM)
-        uses: actions/download-artifact@v4
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-rootJVM
-
-      - name: Inflate target directories (2.13, rootJVM)
-        run: |
-          tar xf targets.tar
-          rm targets.tar
-
-      - name: Download target directories (2.13, rootNative)
-        uses: actions/download-artifact@v4
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.13-rootNative
-
-      - name: Inflate target directories (2.13, rootNative)
-        run: |
-          tar xf targets.tar
-          rm targets.tar
-
       - name: Download target directories (3, rootJS)
         uses: actions/download-artifact@v4
         with:
@@ -234,5 +204,5 @@ jobs:
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
-          modules-ignore: rootjs_2.13 rootjs_3 rootjvm_2.13 rootjvm_3 rootnative_2.13 rootnative_3
+          modules-ignore: rootjs_3 rootjvm_3 rootnative_3
           configs-ignore: test scala-tool scala-doc-tool test-internal

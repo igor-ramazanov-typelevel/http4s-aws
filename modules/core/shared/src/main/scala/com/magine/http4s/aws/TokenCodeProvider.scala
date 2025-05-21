@@ -18,8 +18,11 @@ package com.magine.http4s.aws
 
 import cats.Applicative
 import cats.effect.Async
+import cats.effect.IO
+import cats.effect.LiftIO
 import cats.effect.Sync
 import cats.effect.std.Console
+import cats.effect.std.Dispatcher
 import cats.syntax.all.*
 import fs2.io.stdinUtf8
 import fs2.text
@@ -52,7 +55,15 @@ object TokenCodeProvider {
       private val invalidTokenCode: F[Unit] =
         console.println("Invalid MFA code, must be 6 digits.\n")
 
-      private def readTokenCode(mfaSerial: MfaSerial): F[TokenCode] =
+      private def readTokenCode(mfaSerial: MfaSerial): F[TokenCode] = {
+        implicit val liftIo: LiftIO[F] = new LiftIO[F] {
+          override def liftIO[A](ioa: IO[A]): F[A] =
+            Dispatcher
+              .parallel[F](await = true)
+              .use(d =>
+                Async[F].async_(callback => ioa.unsafeRunAsync(callback)(cats.effect.unsafe.IORuntime.global))
+              )
+        }
         stdinUtf8[F](1024)
           .through(text.lines)
           .map(_.trim)
@@ -66,7 +77,7 @@ object TokenCodeProvider {
           .compile
           .onlyOrError
           .adaptErr { case _: NoSuchElementException => unexpectedEndOfStdin }
-
+      }
       override def tokenCode(mfaSerial: MfaSerial): F[TokenCode] =
         prompt(mfaSerial) >> readTokenCode(mfaSerial)
     }

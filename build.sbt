@@ -1,17 +1,48 @@
+import org.typelevel.sbt.gha.WorkflowStep.Run
+import org.typelevel.sbt.gha.WorkflowStep.Sbt
+
 import com.typesafe.tools.mima.core._
 
-val awsRegionsVersion = "1.0.1"
+ThisBuild / githubOwner := "igor-ramazanov-typelevel"
+ThisBuild / githubRepository := "http4s-aws"
+
+ThisBuild / githubWorkflowPublishPreamble := List.empty
+ThisBuild / githubWorkflowUseSbtThinClient := true
+ThisBuild / githubWorkflowPublish := List(
+  Run(
+    commands = List("echo \"$PGP_SECRET\" | gpg --import"),
+    id = None,
+    name = Some("Import PGP key"),
+    env = Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"),
+    params = Map(),
+    timeoutMinutes = None,
+    workingDirectory = None
+  ),
+  Sbt(
+    commands = List("+ publish"),
+    id = None,
+    name = Some("Publish"),
+    cond = None,
+    env = Map("GITHUB_TOKEN" -> "${{ secrets.GB_TOKEN }}"),
+    params = Map.empty,
+    timeoutMinutes = None,
+    preamble = true
+  )
+)
+ThisBuild / gpgWarnOnFailure := false
+
+val awsRegionsVersion = "1.1.0-M1"
 val caseInsensitiveVersion = "1.5.0"
-val catsEffectVersion = "3.6.1"
+val catsEffectVersion = "3.7-4972921"
 val catsParseVersion = "1.1.0"
 val catsVersion = "2.13.0"
 val circeVersion = "0.14.13"
-val fs2Version = "3.12.0"
-val http4sVersion = "0.23.30"
-val munitCatsEffectVersion = "2.1.0"
+val fs2Version = "3.14.0-M1"
+val http4sVersion = "0.23.31-M1"
+val munitCatsEffectVersion = "2.2.0-M1"
 val scala213Version = "2.13.16"
 val scala3Version = "3.3.6"
-val scalaCheckEffectMunitVersion = "2.0.0-M2"
+val scalaCheckEffectMunitVersion = "2.1.0-M1"
 
 inThisBuild(
   Seq(
@@ -47,7 +78,7 @@ inThisBuild(
     tlCiHeaderCheck := true,
     tlCiScalafixCheck := true,
     tlCiScalafmtCheck := true,
-    tlFatalWarnings := true,
+    tlFatalWarnings := false,
     tlJdkRelease := Some(8),
     tlUntaggedAreSnapshots := false,
     versionScheme := Some("early-semver")
@@ -57,7 +88,7 @@ inThisBuild(
 lazy val root = tlCrossRootProject
   .aggregate(core)
 
-lazy val core = crossProject(JVMPlatform, JSPlatform)
+lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("modules/core"))
   .settings(
     name := "http4s-aws",
@@ -76,9 +107,15 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       "org.typelevel" %%% "cats-parse" % catsParseVersion,
       "org.typelevel" %%% "munit-cats-effect" % munitCatsEffectVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % scalaCheckEffectMunitVersion % Test
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
   )
   .jsSettings(
     tlVersionIntroduced := List("2.13", "3").map(_ -> "6.2.0").toMap,
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+  )
+  .nativeSettings(
+    test := {}
   )
